@@ -4,6 +4,7 @@ import { buildMimcSponge, mimcSpongecontract, buildPedersenHash } from 'circomli
 import { bigInt } from 'snarkjs'
 import { ZKTreeTest } from "../typechain-types";
 import { generateZeros, calculateMerkleRoot } from '../src/zktree'
+import { DepositEvent } from "../typechain-types/ZKTreeTest";
 
 const SEED = "mimcsponge";
 
@@ -106,6 +107,22 @@ describe("ZKTree Smart contract test", () => {
         // console.log(ethers.BigNumber.from(res).toHexString())
 
         const res2 = calculateMerkleRoot(mimc, 10, [1, 2, 3])
+        // console.log(ethers.BigNumber.from(res2).toHexString())
+
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+    })
+
+    it("Should calculate the root correctly from events", async () => {
+        const res = await zktreetest.getLastRoot();
+        // console.log(ethers.BigNumber.from(res).toHexString())
+
+        const events = await zktreetest.queryFilter(zktreetest.filters.Deposit())
+        let commitments = []
+        for (let event of events) {
+            commitments.push(ethers.BigNumber.from(event.args.commitment))
+        }
+
+        const res2 = calculateMerkleRoot(mimc, 10, commitments)
         // console.log(ethers.BigNumber.from(res2).toHexString())
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
