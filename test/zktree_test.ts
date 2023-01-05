@@ -3,8 +3,7 @@ import { ethers } from "hardhat";
 import { buildMimcSponge, mimcSpongecontract, buildPedersenHash } from 'circomlibjs'
 import { bigInt } from 'snarkjs'
 import { ZKTreeTest } from "../typechain-types";
-import { generateZeros, calculateMerkleRoot } from '../src/zktree'
-import { DepositEvent } from "../typechain-types/ZKTreeTest";
+import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof } from '../src/zktree'
 
 const SEED = "mimcsponge";
 
@@ -69,10 +68,10 @@ describe("ZKTree Smart contract test", () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRoot(mimc, 10, [])
+        const res2 = calculateMerkleRootAndPath(mimc, 10, [])
         // console.log(ethers.BigNumber.from(res2).toHexString())
 
-        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
 
@@ -82,10 +81,10 @@ describe("ZKTree Smart contract test", () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRoot(mimc, 10, [1])
-        // console.log(ethers.BigNumber.from(res2).toHexString())
+        const res2 = calculateMerkleRootAndPath(mimc, 10, [1], 1)
+        // console.log(res2)
 
-        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
     it("Should calculate the root correctly after deposit 2.", async () => {
@@ -94,25 +93,26 @@ describe("ZKTree Smart contract test", () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRoot(mimc, 10, [1, 2])
-        // console.log(ethers.BigNumber.from(res2).toHexString())
+        const res2 = calculateMerkleRootAndPath(mimc, 10, [1, 2], 2)
+        // console.log(res2)
 
-        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
-    it("Should calculate the root correctly after deposit 3.", async () => {
+    it("Should calculate the root and proof correctly after deposit 3.", async () => {
         zktreetest.deposit(3);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRoot(mimc, 10, [1, 2, 3])
-        // console.log(ethers.BigNumber.from(res2).toHexString())
+        const res2 = calculateMerkleRootAndPath(mimc, 10, [1, 2, 3], 3)
+        const root = checkMerkleProof(mimc, 10, res2.pathElements, res2.pathIndices, 3)
 
-        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(root).toHexString());
     })
 
-    it("Should calculate the root correctly from events", async () => {
+    it("Should calculate the root and proof correctly from events", async () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
@@ -122,10 +122,11 @@ describe("ZKTree Smart contract test", () => {
             commitments.push(ethers.BigNumber.from(event.args.commitment))
         }
 
-        const res2 = calculateMerkleRoot(mimc, 10, commitments)
-        // console.log(ethers.BigNumber.from(res2).toHexString())
+        const res2 = calculateMerkleRootAndPath(mimc, 10, commitments, 3)
+        const root = checkMerkleProof(mimc, 10, res2.pathElements, res2.pathIndices, 3)
 
-        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
+        assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(root).toHexString());
     })
 
 })
