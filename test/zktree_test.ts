@@ -1,16 +1,11 @@
 import { assert } from "chai";
 import { ethers } from "hardhat";
 import { buildMimcSponge, mimcSpongecontract, buildPedersenHash } from 'circomlibjs'
-import { bigInt } from 'snarkjs'
+import * as snarkjs from 'snarkjs'
 import { ZKTreeTest } from "../typechain-types";
 import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof } from '../src/zktree'
 
 const SEED = "mimcsponge";
-
-function toHex(number, length = 32) {
-    const str = number instanceof Buffer ? number.toString('hex') : bigInt(number).toString(16)
-    return '0x' + str.padStart(length * 2, '0')
-}
 
 describe("ZKTree Smart contract test", () => {
 
@@ -26,6 +21,21 @@ describe("ZKTree Smart contract test", () => {
         zktreetest = await ZKTreeTest.deploy(10, mimcsponge.address);
         mimc = await buildMimcSponge();
     });
+
+    it("Should calculate commitment and nullifier hash correctly", async () => {
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            { nullifier: 10, secret: 20 },
+            "build/CommitmentHasherTest_js/CommitmentHasherTest.wasm",
+            "CommitmentHasherTest.zkey");
+        //vconsole.log(publicSignals);
+        // console.log(proof);
+        const nullifierHash = mimc.multiHash([10]);
+        // console.log(mimc.F.toString(nullifierHash))
+        const commitmentHash = mimc.multiHash([10, 20]);
+        // console.log(mimc.F.toString(commitmentHash))
+        assert.equal(publicSignals[0], mimc.F.toString(commitmentHash))
+        assert.equal(publicSignals[1], mimc.F.toString(nullifierHash))
+    })
 
     it("Should calculate the mimc correctly", async () => {
         const res = await mimcsponge["MiMCSponge"](1, 2, 3);
