@@ -22,12 +22,24 @@ describe("ZKTree Smart contract test", () => {
         mimc = await buildMimcSponge();
     });
 
+    it("Should calculate the root and proof correctly with circuit", async () => {
+        const res = calculateMerkleRootAndPath(mimc, 10, [1, 2, 3], 3)
+        // console.log(res)
+
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            { leaf: 3, pathElements: res.pathElements, pathIndices: res.pathIndices },
+            "build/MerkleTreeCheckerTest_js/MerkleTreeCheckerTest.wasm",
+            "build/MerkleTreeCheckerTest.zkey");
+
+        assert.equal(publicSignals[0], res.root.toString())
+    })
+
     it("Should calculate commitment and nullifier hash correctly", async () => {
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             { nullifier: 10, secret: 20 },
             "build/CommitmentHasherTest_js/CommitmentHasherTest.wasm",
             "build/CommitmentHasherTest.zkey");
-        //vconsole.log(publicSignals);
+        // console.log(publicSignals);
         // console.log(proof);
         const nullifierHash = mimc.multiHash([10]);
         // console.log(mimc.F.toString(nullifierHash))
