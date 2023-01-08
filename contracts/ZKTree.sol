@@ -8,7 +8,7 @@ contract ZKTree is MerkleTreeWithHistory {
     mapping(bytes32 => bool) public nullifierHashes;
     mapping(bytes32 => bool) public commitments;
 
-    event Deposit(
+    event Commit(
         bytes32 indexed commitment,
         uint32 leafIndex,
         uint256 timestamp
@@ -19,11 +19,11 @@ contract ZKTree is MerkleTreeWithHistory {
         IHasher _hasher
     ) MerkleTreeWithHistory(_levels, _hasher) {}
 
-    function _deposit(bytes32 _commitment) internal {
+    function _commit(bytes32 _commitment) internal {
         require(!commitments[_commitment], "The commitment has been submitted");
 
         commitments[_commitment] = true;
         uint32 insertedIndex = _insert(_commitment);
-        emit Deposit(_commitment, insertedIndex, block.timestamp);
+        emit Commit(_commitment, insertedIndex, block.timestamp);
     }
 }

@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { buildMimcSponge, mimcSpongecontract, buildPedersenHash } from 'circomlibjs'
 import * as snarkjs from 'snarkjs'
 import { ZKTreeTest } from "../typechain-types";
-import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof } from '../src/zktree'
+import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment } from '../src/zktree'
 
 const SEED = "mimcsponge";
 
@@ -35,18 +35,21 @@ describe("ZKTree Smart contract test", () => {
     })
 
     it("Should calculate commitment and nullifier hash correctly", async () => {
+        const res = generateCommitment(mimc)
+        // console.log(res)
+
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-            { nullifier: 10, secret: 20 },
+            { nullifier: res.nullifier, secret: res.secret },
             "build/CommitmentHasherTest_js/CommitmentHasherTest.wasm",
             "build/CommitmentHasherTest.zkey");
         // console.log(publicSignals);
         // console.log(proof);
-        const nullifierHash = mimc.multiHash([10]);
+        // const nullifierHash = mimc.multiHash(['279742864192120152402769672173186917067247772449048476805227349133425435019']);
         // console.log(mimc.F.toString(nullifierHash))
-        const commitmentHash = mimc.multiHash([10, 20]);
+        // const commitmentHash = mimc.multiHash(['279742864192120152402769672173186917067247772449048476805227349133425435019', '52772363489191471191688474459043598250377921094746635281870655152385669130']);
         // console.log(mimc.F.toString(commitmentHash))
-        assert.equal(publicSignals[0], mimc.F.toString(commitmentHash))
-        assert.equal(publicSignals[1], mimc.F.toString(nullifierHash))
+        assert.equal(publicSignals[0], res.commitment)
+        assert.equal(publicSignals[1], res.nullifierHash)
     })
 
     it("Should calculate the mimc correctly", async () => {
@@ -97,8 +100,8 @@ describe("ZKTree Smart contract test", () => {
     })
 
 
-    it("Should calculate the root correctly after deposit 1.", async () => {
-        zktreetest.deposit(1);
+    it("Should calculate the root correctly after commit 1.", async () => {
+        zktreetest.commit(1);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
@@ -109,8 +112,8 @@ describe("ZKTree Smart contract test", () => {
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
-    it("Should calculate the root correctly after deposit 2.", async () => {
-        zktreetest.deposit(2);
+    it("Should calculate the root correctly after commit 2.", async () => {
+        zktreetest.commit(2);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
@@ -121,8 +124,8 @@ describe("ZKTree Smart contract test", () => {
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
-    it("Should calculate the root and proof correctly after deposit 3.", async () => {
-        zktreetest.deposit(3);
+    it("Should calculate the root and proof correctly after commit 3.", async () => {
+        zktreetest.commit(3);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
@@ -138,7 +141,7 @@ describe("ZKTree Smart contract test", () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const events = await zktreetest.queryFilter(zktreetest.filters.Deposit())
+        const events = await zktreetest.queryFilter(zktreetest.filters.Commit())
         let commitments = []
         for (let event of events) {
             commitments.push(ethers.BigNumber.from(event.args.commitment))

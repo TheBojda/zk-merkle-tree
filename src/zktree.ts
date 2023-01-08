@@ -1,13 +1,26 @@
 // based on https://github.com/tornadocash/fixed-merkle-tree
 
-import { buildMimcSponge } from 'circomlibjs'
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
+import * as crypto from 'crypto'
 
 const ZERO_VALUE = BigNumber.from('21663839004416932945382355908790599225266501822907911457504978515578255421292') // = keccak256("tornado") % FIELD_SIZE
 
 function calculateHash(mimc, left, right) {
     return BigNumber.from(mimc.F.toString(mimc.multiHash([left, right])))
+}
+
+export function generateCommitment(mimc) {
+    const nullifier = BigNumber.from(crypto.randomBytes(31)).toString()
+    const secret = BigNumber.from(crypto.randomBytes(31)).toString()
+    const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]))
+    const nullifierHash = mimc.F.toString(mimc.multiHash([nullifier]))
+    return {
+        nullifier: nullifier,
+        secret: secret,
+        commitment: commitment,
+        nullifierHash: nullifierHash
+    }
 }
 
 export function generateZeros(mimc: any, levels: number) {
