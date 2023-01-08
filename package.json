@@ -5,6 +5,9 @@
   "repository": "https://github.com/TheBojda/zktree.git",
   "author": "Laszlo Fazekas <thebojda@gmail.com>",
   "license": "MIT",
+  "scripts": {
+    "prepare": "sh scripts/prepare.sh"
+  },
   "devDependencies": {
     "@ethersproject/abi": "^5.4.7",
     "@ethersproject/providers": "^5.4.7",

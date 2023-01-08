@@ -26,7 +26,7 @@ describe("ZKTree Smart contract test", () => {
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
             { nullifier: 10, secret: 20 },
             "build/CommitmentHasherTest_js/CommitmentHasherTest.wasm",
-            "CommitmentHasherTest.zkey");
+            "build/CommitmentHasherTest.zkey");
         //vconsole.log(publicSignals);
         // console.log(proof);
         const nullifierHash = mimc.multiHash([10]);
