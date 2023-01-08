@@ -1,15 +1,39 @@
+import * as fs from 'fs'
+import * as snarkjs from 'snarkjs'
 import { assert } from "chai";
 import { ethers } from "hardhat";
-import { buildMimcSponge, mimcSpongecontract, buildPedersenHash } from 'circomlibjs'
-import * as snarkjs from 'snarkjs'
-import { ZKTreeTest } from "../typechain-types";
+import { buildMimcSponge, mimcSpongecontract } from 'circomlibjs'
+import { Verifier, ZKTreeTest } from "../typechain-types";
+import { PromiseOrValue } from "../typechain-types/common";
+import { BigNumberish } from "ethers";
 import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment } from '../src/zktree'
 
 const SEED = "mimcsponge";
 
+function convertCallData(calldata) {
+    const argv = calldata
+        .replace(/["[\]\s]/g, "")
+        .split(",")
+        .map((x) => ethers.BigNumber.from(x).toString());
+
+    const a = [argv[0], argv[1]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+    const b = [
+        [argv[2], argv[3]],
+        [argv[4], argv[5]],
+    ] as [
+            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>],
+            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
+        ];
+    const c = [argv[6], argv[7]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+    const input = [argv[8], argv[9]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+
+    return { a, b, c, input };
+}
+
 describe("ZKTree Smart contract test", () => {
 
     let zktreetest: ZKTreeTest
+    let verifier: Verifier
     let mimc: any
     let mimcsponge: any
 
@@ -19,8 +43,40 @@ describe("ZKTree Smart contract test", () => {
         mimcsponge = await MiMCSponge.deploy()
         const ZKTreeTest = await ethers.getContractFactory("ZKTreeTest");
         zktreetest = await ZKTreeTest.deploy(10, mimcsponge.address);
+        const Verifier = await ethers.getContractFactory("Verifier");
+        verifier = await Verifier.deploy();
         mimc = await buildMimcSponge();
     });
+
+    it("Testing the verifier circuit", async () => {
+        const commitment = generateCommitment(mimc)
+        // console.log(commitment)
+
+        const rootAndPath = calculateMerkleRootAndPath(mimc, 20, [1, 2, 3, commitment.commitment], commitment.commitment)
+        // console.log(rootAndPath)
+
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            {
+                nullifier: commitment.nullifier, secret: commitment.secret,
+                pathElements: rootAndPath.pathElements, pathIndices: rootAndPath.pathIndices
+            },
+            "build/Verifier_js/Verifier.wasm",
+            "build/Verifier.zkey");
+
+        assert.equal(publicSignals[0], commitment.nullifierHash)
+        assert.equal(publicSignals[1], rootAndPath.root)
+
+        const vKey = JSON.parse(fs.readFileSync("build/Verifier_vkey.json").toString());
+        const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
+        assert(res)
+
+        const cd = convertCallData(await snarkjs.groth16.exportSolidityCallData(proof, publicSignals));
+        // console.log(cd);
+
+        const verifyRes = await verifier.verifyProof(cd.a, cd.b, cd.c, cd.input);
+        // console.log(verifyRes)
+        assert(verifyRes)
+    })
 
     it("Should calculate the root and proof correctly with circuit", async () => {
         const res = calculateMerkleRootAndPath(mimc, 10, [1, 2, 3], 3)

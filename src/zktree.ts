@@ -67,7 +67,7 @@ export function calculateMerkleRootAndPath(mimc: any, levels: number, elements: 
     }
 
     return {
-        root: root,
+        root: root.toString(),
         pathElements: pathElements.map((v) => v.toString()),
         pathIndices: pathIndices.map((v) => v.toString())
     }
