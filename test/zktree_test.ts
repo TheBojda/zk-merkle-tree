@@ -4,32 +4,10 @@ import { assert } from "chai";
 import { ethers } from "hardhat";
 import { buildMimcSponge, mimcSpongecontract } from 'circomlibjs'
 import { Verifier, ZKTreeTest } from "../typechain-types";
-import { PromiseOrValue } from "../typechain-types/common";
-import { BigNumberish } from "ethers";
-import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment, calculateMerkleRootAndPathFromEvents, getVerifierWASM } from '../src/zktree'
+import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment, calculateMerkleRootAndPathFromEvents, getVerifierWASM, convertCallData, calculateMerkleRootAndZKProof } from '../src/zktree'
 
 const SEED = "mimcsponge";
-const TREE_LEVELS = 10;
-
-function convertCallData(calldata) {
-    const argv = calldata
-        .replace(/["[\]\s]/g, "")
-        .split(",")
-        .map((x) => ethers.BigNumber.from(x).toString());
-
-    const a = [argv[0], argv[1]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
-    const b = [
-        [argv[2], argv[3]],
-        [argv[4], argv[5]],
-    ] as [
-            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>],
-            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
-        ];
-    const c = [argv[6], argv[7]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
-    const input = [argv[8], argv[9]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
-
-    return { a, b, c, input };
-}
+const TREE_LEVELS = 20;
 
 describe("ZKTree Smart contract test", () => {
 
@@ -208,8 +186,8 @@ describe("ZKTree Smart contract test", () => {
         const signers = await ethers.getSigners()
         const commitment = generateCommitment(mimc)
         await zktreetest.commit(commitment.commitment)
-        const proof = await calculateMerkleRootAndPathFromEvents(mimc, zktreetest.address, signers[0], TREE_LEVELS, commitment.commitment)
-
+        const cd = await calculateMerkleRootAndZKProof(zktreetest.address, signers[0], TREE_LEVELS, commitment, "build/Verifier.zkey")
+        await zktreetest.nullify(cd.nullifierHash, cd.root, cd.proof_a, cd.proof_b, cd.proof_c)
     })
 
 })

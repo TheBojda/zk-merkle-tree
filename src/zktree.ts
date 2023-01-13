@@ -1,8 +1,10 @@
 // based on https://github.com/tornadocash/fixed-merkle-tree
 
-import { BigNumber } from 'ethers'
-import { ethers } from 'hardhat'
 import * as crypto from 'crypto'
+import * as snarkjs from 'snarkjs'
+import { buildMimcSponge } from 'circomlibjs'
+import { PromiseOrValue } from "../typechain-types/common";
+import { BigNumberish, BigNumber, Contract } from "ethers";
 
 const ZERO_VALUE = BigNumber.from('21663839004416932945382355908790599225266501822907911457504978515578255421292') // = keccak256("tornado") % FIELD_SIZE
 
@@ -62,8 +64,8 @@ export function calculateMerkleRootAndPath(mimc: any, levels: number, elements: 
     let pathIndices = []
 
     if (element) {
-        const bne = ethers.BigNumber.from(element)
-        let index = layers[0].findIndex(e => ethers.BigNumber.from(e).eq(bne))
+        const bne = BigNumber.from(element)
+        let index = layers[0].findIndex(e => BigNumber.from(e).eq(bne))
         // console.log('idx: ' + index)
         for (let level = 0; level < levels; level++) {
             pathIndices[level] = index % 2
@@ -101,15 +103,51 @@ export async function calculateMerkleRootAndPathFromEvents(mimc: any, address: a
     const abi = [
         "event Commit(bytes32 indexed commitment,uint32 leafIndex,uint256 timestamp)"
     ];
-    const contract = new ethers.Contract(address, abi, provider)
+    const contract = new Contract(address, abi, provider)
     const events = await contract.queryFilter(contract.filters.Commit())
     let commitments = []
     for (let event of events) {
-        commitments.push(ethers.BigNumber.from(event.args.commitment))
+        commitments.push(BigNumber.from(event.args.commitment))
     }
     return calculateMerkleRootAndPath(mimc, levels, commitments, element)
 }
 
-export async function calculateMerkleRootAndZKProof(mimc: any, address: any, provider: any, levels: number, commitment: any, zkey: any) {
+export function convertCallData(calldata) {
+    const argv = calldata
+        .replace(/["[\]\s]/g, "")
+        .split(",")
+        .map((x) => BigNumber.from(x).toString());
 
+    const a = [argv[0], argv[1]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+    const b = [
+        [argv[2], argv[3]],
+        [argv[4], argv[5]],
+    ] as [
+            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>],
+            [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
+        ];
+    const c = [argv[6], argv[7]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+    const input = [argv[8], argv[9]] as [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>];
+
+    return { a, b, c, input };
+}
+
+export async function calculateMerkleRootAndZKProof(address: any, provider: any, levels: number, commitment: any, zkey: any) {
+    const mimc = await buildMimcSponge();
+    const rootAndPath = await calculateMerkleRootAndPathFromEvents(mimc, address, provider, levels, commitment.commitment);
+    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+        {
+            nullifier: commitment.nullifier, secret: commitment.secret,
+            pathElements: rootAndPath.pathElements, pathIndices: rootAndPath.pathIndices
+        },
+        getVerifierWASM(),
+        zkey);
+    const cd = convertCallData(await snarkjs.groth16.exportSolidityCallData(proof, publicSignals));
+    return {
+        nullifierHash: publicSignals[0],
+        root: publicSignals[1],
+        proof_a: cd.a,
+        proof_b: cd.b,
+        proof_c: cd.c
+    }
 }

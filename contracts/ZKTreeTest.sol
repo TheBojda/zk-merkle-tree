@@ -15,12 +15,18 @@ contract ZKTreeTest is ZKTree {
     }
 
     function nullify(
-        bytes32 _nullifier,
-        bytes32 _root,
+        uint256 _nullifier,
+        uint256 _root,
         uint[2] memory _proof_a,
         uint[2][2] memory _proof_b,
         uint[2] memory _proof_c
     ) external {
-       _nullify(_nullifier, _root, _proof_a, _proof_b, _proof_c);
+        _nullify(
+            bytes32(_nullifier),
+            bytes32(_root),
+            _proof_a,
+            _proof_b,
+            _proof_c
+        );
     }
 }
