@@ -6,9 +6,10 @@ import { buildMimcSponge, mimcSpongecontract } from 'circomlibjs'
 import { Verifier, ZKTreeTest } from "../typechain-types";
 import { PromiseOrValue } from "../typechain-types/common";
 import { BigNumberish } from "ethers";
-import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment } from '../src/zktree'
+import { generateZeros, calculateMerkleRootAndPath, checkMerkleProof, generateCommitment, calculateMerkleRootAndPathFromEvents, getVerifierWASM } from '../src/zktree'
 
 const SEED = "mimcsponge";
+const TREE_LEVELS = 10;
 
 function convertCallData(calldata) {
     const argv = calldata
@@ -42,9 +43,9 @@ describe("ZKTree Smart contract test", () => {
         const MiMCSponge = new ethers.ContractFactory(mimcSpongecontract.abi, mimcSpongecontract.createCode(SEED, 220), signers[0])
         mimcsponge = await MiMCSponge.deploy()
         const ZKTreeTest = await ethers.getContractFactory("ZKTreeTest");
-        zktreetest = await ZKTreeTest.deploy(10, mimcsponge.address);
         const Verifier = await ethers.getContractFactory("Verifier");
         verifier = await Verifier.deploy();
+        zktreetest = await ZKTreeTest.deploy(TREE_LEVELS, mimcsponge.address, verifier.address);
         mimc = await buildMimcSponge();
     });
 
@@ -60,7 +61,7 @@ describe("ZKTree Smart contract test", () => {
                 nullifier: commitment.nullifier, secret: commitment.secret,
                 pathElements: rootAndPath.pathElements, pathIndices: rootAndPath.pathIndices
             },
-            "build/Verifier_js/Verifier.wasm",
+            getVerifierWASM(),
             "build/Verifier.zkey");
 
         assert.equal(publicSignals[0], commitment.nullifierHash)
@@ -79,7 +80,7 @@ describe("ZKTree Smart contract test", () => {
     })
 
     it("Should calculate the root and proof correctly with circuit", async () => {
-        const res = calculateMerkleRootAndPath(mimc, 10, [1, 2, 3], 3)
+        const res = calculateMerkleRootAndPath(mimc, TREE_LEVELS, [1, 2, 3], 3)
         // console.log(res)
 
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
@@ -121,7 +122,7 @@ describe("ZKTree Smart contract test", () => {
 
 
     it('Should generate zeros correctly', async () => {
-        const zeros = generateZeros(mimc, 10)
+        const zeros = generateZeros(mimc, TREE_LEVELS)
         //console.log(ethers.BigNumber.from(zeros[0]).toHexString())
         //console.log(ethers.BigNumber.from(zeros[1]).toHexString())
         //console.log(ethers.BigNumber.from(zeros[2]).toHexString())
@@ -149,7 +150,7 @@ describe("ZKTree Smart contract test", () => {
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRootAndPath(mimc, 10, [])
+        const res2 = calculateMerkleRootAndPath(mimc, TREE_LEVELS, [])
         // console.log(ethers.BigNumber.from(res2).toHexString())
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
@@ -157,57 +158,58 @@ describe("ZKTree Smart contract test", () => {
 
 
     it("Should calculate the root correctly after commit 1.", async () => {
-        zktreetest.commit(1);
+        await zktreetest.commit(1);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRootAndPath(mimc, 10, [1], 1)
+        const res2 = calculateMerkleRootAndPath(mimc, TREE_LEVELS, [1], 1)
         // console.log(res2)
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
     it("Should calculate the root correctly after commit 2.", async () => {
-        zktreetest.commit(2);
+        await zktreetest.commit(2);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRootAndPath(mimc, 10, [1, 2], 2)
+        const res2 = calculateMerkleRootAndPath(mimc, TREE_LEVELS, [1, 2], 2)
         // console.log(res2)
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
     })
 
     it("Should calculate the root and proof correctly after commit 3.", async () => {
-        zktreetest.commit(3);
+        await zktreetest.commit(3);
 
         const res = await zktreetest.getLastRoot();
         // console.log(ethers.BigNumber.from(res).toHexString())
 
-        const res2 = calculateMerkleRootAndPath(mimc, 10, [1, 2, 3], 3)
-        const root = checkMerkleProof(mimc, 10, res2.pathElements, res2.pathIndices, 3)
+        const res2 = calculateMerkleRootAndPath(mimc, TREE_LEVELS, [1, 2, 3], 3)
+        const root = checkMerkleProof(mimc, TREE_LEVELS, res2.pathElements, res2.pathIndices, 3)
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(root).toHexString());
     })
 
     it("Should calculate the root and proof correctly from events", async () => {
+        const signers = await ethers.getSigners()
         const res = await zktreetest.getLastRoot();
-        // console.log(ethers.BigNumber.from(res).toHexString())
-
-        const events = await zktreetest.queryFilter(zktreetest.filters.Commit())
-        let commitments = []
-        for (let event of events) {
-            commitments.push(ethers.BigNumber.from(event.args.commitment))
-        }
-
-        const res2 = calculateMerkleRootAndPath(mimc, 10, commitments, 3)
-        const root = checkMerkleProof(mimc, 10, res2.pathElements, res2.pathIndices, 3)
+        const res2 = await calculateMerkleRootAndPathFromEvents(mimc, zktreetest.address, signers[0], TREE_LEVELS, 3)
+        const root = checkMerkleProof(mimc, TREE_LEVELS, res2.pathElements, res2.pathIndices, 3)
 
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(res2.root).toHexString());
         assert.equal(ethers.BigNumber.from(res).toHexString(), ethers.BigNumber.from(root).toHexString());
+    })
+
+    it("Testing the full process", async () => {
+        const signers = await ethers.getSigners()
+        const commitment = generateCommitment(mimc)
+        await zktreetest.commit(commitment.commitment)
+        const proof = await calculateMerkleRootAndPathFromEvents(mimc, zktreetest.address, signers[0], TREE_LEVELS, commitment.commitment)
+
     })
 
 })

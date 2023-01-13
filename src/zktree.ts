@@ -6,6 +6,12 @@ import * as crypto from 'crypto'
 
 const ZERO_VALUE = BigNumber.from('21663839004416932945382355908790599225266501822907911457504978515578255421292') // = keccak256("tornado") % FIELD_SIZE
 
+import loadWebAssembly from './Verifier'
+
+export function getVerifierWASM() {
+    return loadWebAssembly().buffer
+}
+
 function calculateHash(mimc, left, right) {
     return BigNumber.from(mimc.F.toString(mimc.multiHash([left, right])))
 }
@@ -89,4 +95,21 @@ export function checkMerkleProof(mimc: any, levels: number, pathElements: any[],
         // console.log(`in0: ${in0} in1: ${in1} hash: ${hashes[i]}`)
     }
     return hashes[levels - 1]
+}
+
+export async function calculateMerkleRootAndPathFromEvents(mimc: any, address: any, provider: any, levels: number, element: any) {
+    const abi = [
+        "event Commit(bytes32 indexed commitment,uint32 leafIndex,uint256 timestamp)"
+    ];
+    const contract = new ethers.Contract(address, abi, provider)
+    const events = await contract.queryFilter(contract.filters.Commit())
+    let commitments = []
+    for (let event of events) {
+        commitments.push(ethers.BigNumber.from(event.args.commitment))
+    }
+    return calculateMerkleRootAndPath(mimc, levels, commitments, element)
+}
+
+export async function calculateMerkleRootAndZKProof(mimc: any, address: any, provider: any, levels: number, commitment: any, zkey: any) {
+
 }
