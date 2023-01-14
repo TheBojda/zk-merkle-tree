@@ -1,13 +1,17 @@
-# Sample Hardhat Project
+# zktree
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
+A JavaScript library for anonymous voting on Ethereum blockchain using zero-knowledge proof.
 
-Try running some of the following tasks:
+## Usage
 
-```shell
-npx hardhat help
-npx hardhat test
-REPORT_GAS=true npx hardhat test
-npx hardhat node
-npx hardhat run scripts/deploy.ts
-```
+Create your own voting contract that is inherited from `zktree/contracts/ZKTree.sol`.
+
+Implement the `commit` and `nullify` methods.
+
+Use `generateCommitment` to generate the commitment with nullifier and secret.
+
+Use `calculateMerkleRootAndZKProof` to generate the ZKP.
+
+(Real documentation is coming soon.)
+
+Check the test folder and the [zktree-vote](https://github.com/TheBojda/zktree-vote) project.

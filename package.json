@@ -4,6 +4,13 @@
   "repository": "https://github.com/TheBojda/zktree.git",
   "author": "Laszlo Fazekas <thebojda@gmail.com>",
   "license": "MIT",
+  "description": "JavaScript library for anonymous voting on Ethereum blockchain using zero-knowledge proof",
+  "keywords": [
+    "zero-knowledge",
+    "Ethereum",
+    "voting",
+    "blockchain"
+  ],
   "source": "src/zktree.ts",
   "main": "dist/main.js",
   "module": "dist/module.js",
