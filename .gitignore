@@ -14,3 +14,5 @@ artifacts
 # Hardhat files
 
 /build/
+/dist/
+/.parcel-cache/
