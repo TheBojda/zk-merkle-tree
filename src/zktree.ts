@@ -18,7 +18,8 @@ function calculateHash(mimc, left, right) {
     return BigNumber.from(mimc.F.toString(mimc.multiHash([left, right])))
 }
 
-export function generateCommitment(mimc) {
+export async function generateCommitment() {
+    const mimc = await buildMimcSponge();
     const nullifier = BigNumber.from(crypto.randomBytes(31)).toString()
     const secret = BigNumber.from(crypto.randomBytes(31)).toString()
     const commitment = mimc.F.toString(mimc.multiHash([nullifier, secret]))

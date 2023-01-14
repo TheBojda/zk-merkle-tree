@@ -28,7 +28,7 @@ describe("ZKTree Smart contract test", () => {
     });
 
     it("Testing the verifier circuit", async () => {
-        const commitment = generateCommitment(mimc)
+        const commitment = await generateCommitment()
         // console.log(commitment)
 
         const rootAndPath = calculateMerkleRootAndPath(mimc, 20, [1, 2, 3, commitment.commitment], commitment.commitment)
@@ -70,7 +70,7 @@ describe("ZKTree Smart contract test", () => {
     })
 
     it("Should calculate commitment and nullifier hash correctly", async () => {
-        const res = generateCommitment(mimc)
+        const res = await generateCommitment()
         // console.log(res)
 
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(
@@ -184,7 +184,7 @@ describe("ZKTree Smart contract test", () => {
 
     it("Testing the full process", async () => {
         const signers = await ethers.getSigners()
-        const commitment = generateCommitment(mimc)
+        const commitment = await generateCommitment()
         await zktreetest.commit(commitment.commitment)
         const cd = await calculateMerkleRootAndZKProof(zktreetest.address, signers[0], TREE_LEVELS, commitment, "build/Verifier.zkey")
         await zktreetest.nullify(cd.nullifierHash, cd.root, cd.proof_a, cd.proof_b, cd.proof_c)
