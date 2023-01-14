@@ -1,23 +1,13 @@
 {
   "name": "zktree",
   "version": "1.0.0",
-  "main": "dist/server/zktree.js",
-  "browser": "dist/client/zktree.js",
   "repository": "https://github.com/TheBojda/zktree.git",
   "author": "Laszlo Fazekas <thebojda@gmail.com>",
   "license": "MIT",
-  "targets": {
-    "client": {
-      "source": "./src/zktree.ts",
-      "distDir": "./dist/client",
-      "context": "browser"
-    },
-    "server": {
-      "source": "./src/zktree.ts",
-      "distDir": "./dist/server",
-      "context": "node"
-    }
-  },
+  "source": "src/zktree.ts",
+  "main": "dist/main.js",
+  "module": "dist/module.js",
+  "types": "dist/types.d.ts",
   "scripts": {
     "prepare": "sh scripts/prepare.sh",
     "build": "parcel build"
@@ -30,6 +20,8 @@
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
     "@nomiclabs/hardhat-ethers": "^2.0.0",
     "@nomiclabs/hardhat-etherscan": "^3.0.0",
+    "@parcel/packager-ts": "^2.8.2",
+    "@parcel/transformer-typescript-types": "^2.8.2",
     "@typechain/ethers-v5": "^10.1.0",
     "@typechain/hardhat": "^6.1.2",
     "@types/chai": "^4.2.0",
@@ -38,7 +30,6 @@
     "assert": "^2.0.0",
     "buffer": "^5.7.1",
     "chai": "^4.2.0",
-    "ethers": "^5.4.7",
     "hardhat": "^2.12.5",
     "hardhat-gas-reporter": "^1.0.8",
     "parcel": "^2.8.2",
@@ -53,6 +44,7 @@
   "dependencies": {
     "circomlib": "^2.0.5",
     "circomlibjs": "^0.1.7",
+    "ethers": "^5.7.2",
     "snarkjs": "^0.5.0"
   }
 }
