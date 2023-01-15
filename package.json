@@ -1,5 +1,5 @@
 {
-  "name": "zktree",
+  "name": "zk-merkle-tree",
   "version": "1.0.0",
   "repository": "https://github.com/TheBojda/zktree.git",
   "author": "Laszlo Fazekas <thebojda@gmail.com>",
