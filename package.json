@@ -1,6 +1,6 @@
 {
   "name": "zk-merkle-tree",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "repository": "https://github.com/TheBojda/zk-merkle-tree.git",
   "author": "Laszlo Fazekas <thebojda@gmail.com>",
   "license": "MIT",
